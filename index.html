@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City Ancestry</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css" />
+    <!-- Leaflet JS -->
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            left: 0;
+        }
+        #year-controls {
+            position: fixed;
+            top: 10px;
+            left: 50px;
+            z-index: 9999;
+        }
+        /* Base style for all control buttons */
+        .control-button {
+            padding: 5px 10px;
+            margin: 5px;
+            cursor: pointer;
+            background-color: #333; /* Dark gray background */
+            color: white; /* White text */
+            border: 1px solid #555; /* Slightly lighter border */
+            border-radius: 4px;
+            font-family: 'Arial', sans-serif; /* Matches year indicator */
+        }
+        /* Specific styles for year buttons' active state */
+        .year-btn.active {
+            background-color: #555; /* Lighter gray for active state */
+            font-weight: bold;
+        }
+        #legend-container {
+            position: fixed;
+            bottom: 50px;
+            left: 50px;
+            z-index: 9999;
+        }
+        #legend-button {
+            width: 120px;
+            height: 30px;
+            background-color: grey;
+            border: 2px solid grey;
+            text-align: center;
+            line-height: 30px;
+            cursor: pointer;
+            font-size: 14px;
+            color: white;
+            font-family: 'Arial', sans-serif; /* Matches year indicator */
+        }
+        #legend-content {
+            width: 200px;
+            height: 200px;
+            background-color: grey;
+            border: 4px solid grey;
+            font-size: 16px;
+            color: white;
+            padding: 10px;
+            display: none;
+            font-family: 'Arial', sans-serif; /* Matches year indicator */
+        }
+        .dot {
+            width: 12px;
+            height: 12px;
+            display: inline-block;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        hr {
+            margin: 5px 0;
+        }
+        .hide-legend {
+            text-align: center;
+            margin-top: 10px;
+            cursor: pointer;
+            padding: 5px;
+        }
+        /* Year indicator styling */
+        #year-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 72px;
+            color: white;
+            z-index: 9999;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-shadow: 2px 2px 4px #000;
+            font-family: 'Arial', sans-serif; /* Explicitly set for consistency */
+        }
+        /* Fullscreen button styling */
+        #fullscreen-button {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 9999;
+        }
+        /* Fullscreen styles */
+        .fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9998;
+            background-color: #000;
+        }
+        /* Dark mode for Leaflet zoom controls */
+        .leaflet-control-zoom-in,
+        .leaflet-control-zoom-out {
+            background-color: #333 !important; /* Dark gray background */
+            color: white !important; /* White text */
+            border: 1px solid #555 !important; /* Matching border */
+        }
+        .leaflet-control-zoom a {
+            color: white !important; /* Ensures zoom icons/text are white */
+        }
+    </style>
+</head>
+<body>
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Year Toggle Buttons (ordered from 1910 to 2020) -->
+    <div id="year-controls">
+        <button id="play-pause" class="control-button">Pause</button>
+        <button id="btn-1910" class="control-button year-btn" data-year="1910">1910</button>
+        <button id="btn-1920" class="control-button year-btn" data-year="1920">1920</button>
+        <button id="btn-1930" class="control-button year-btn" data-year="1930">1930</button>
+        <button id="btn-1940" class="control-button year-btn" data-year="1940">1940</button>
+        <button id="btn-1950" class="control-button year-btn" data-year="1950">1950</button>
+        <button id="btn-1960" class="control-button year-btn" data-year="1960">1960</button>
+        <button id="btn-1970" class="control-button year-btn" data-year="1970">1970</button>
+        <button id="btn-1980" class="control-button year-btn" data-year="1980">1980</button>
+        <button id="btn-1990" class="control-button year-btn" data-year="1990">1990</button>
+        <button id="btn-2000" class="control-button year-btn" data-year="2000">2000</button>
+        <button id="btn-2010" class="control-button year-btn" data-year="2010">2010</button>
+        <button id="btn-2020" class="control-button year-btn" data-year="2020">2020</button>
+    </div>
+
+    <!-- Fullscreen Button -->
+    <button id="fullscreen-button" class="control-button">Fullscreen</button>
+
+    <!-- Legend -->
+    <div id="legend-container">
+        <div id="legend-button">Show Legend</div>
+        <div id="legend-content">
+            <b>Legend</b><br>
+            European (White): <span class="dot" style="background:#1f77b4;"></span><br>
+            American (Hispanic): <span class="dot" style="background:#ff7f0e;"></span><br>
+            African (Black): <span class="dot" style="background:#d62728;"></span><br>
+            Asian: <span class="dot" style="background:#2ca02c;"></span><br>
+            <hr>
+            Each dot represents 30 individuals in the Census data.
+            <div class="hide-legend">Hide Legend</div>
+        </div>
+    </div>
+
+    <!-- Year Indicator -->
+    <div id="year-indicator"></div>
+
+    <!-- JavaScript -->
+    <script>
+        // Initialize everything after the page is fully loaded
+        window.addEventListener('load', function() {
+
+            // Initialize the map
+            var corners = {
+                min_lat: 40.508896,
+                max_lat: 41.008896,
+                min_lon: -74.33513,
+                max_lon: -73.63513,
+                center_lat: 40.758896,
+                center_lon: -73.98513
+            };
+            var bounds = [[corners.min_lat, corners.min_lon], [corners.max_lat, corners.max_lon]];
+            var map = L.map('map', {
+                center: [corners.center_lat, corners.center_lon],
+                zoom: 13,
+                minZoom: 12,
+                maxZoom: 14,
+                maxBounds: bounds,
+                maxBoundsViscosity: 1.0,
+                attributionControl: false
+            });
+
+            // Add dark tile layer
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: ' ',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(map);
+
+            // Define years
+            var years = [1910, 1920, 1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020];
+
+            // Define overlays and buttons
+            var overlays = {
+                1910: L.imageOverlay('images/dots_1910.png', bounds),
+                1920: L.imageOverlay('images/dots_1920.png', bounds),
+                1930: L.imageOverlay('images/dots_1930.png', bounds),
+                1940: L.imageOverlay('images/dots_1940.png', bounds),
+                1950: L.imageOverlay('images/dots_1950.png', bounds),
+                1960: L.imageOverlay('images/dots_1960.png', bounds),
+                1970: L.imageOverlay('images/dots_1970.png', bounds),
+                1980: L.imageOverlay('images/dots_1980.png', bounds),
+                1990: L.imageOverlay('images/dots_1990.png', bounds),
+                2000: L.imageOverlay('images/dots_2000.png', bounds),
+                2010: L.imageOverlay('images/dots_2010.png', bounds),
+                2020: L.imageOverlay('images/dots_2020.png', bounds)
+            };
+
+            var buttons = {
+                1910: document.getElementById('btn-1910'),
+                1920: document.getElementById('btn-1920'),
+                1930: document.getElementById('btn-1930'),
+                1940: document.getElementById('btn-1940'),
+                1950: document.getElementById('btn-1950'),
+                1960: document.getElementById('btn-1960'),
+                1970: document.getElementById('btn-1970'),
+                1980: document.getElementById('btn-1980'),
+                1990: document.getElementById('btn-1990'),
+                2000: document.getElementById('btn-2000'),
+                2010: document.getElementById('btn-2010'),
+                2020: document.getElementById('btn-2020')
+            };
+
+            // Initialize variables
+            var currentIndex = 0;
+            var isPlaying = true; // Start in play mode
+            var timeoutId;
+            var isFullscreen = false;
+
+            // Switch to a specific year and update the indicator
+            function switchToYear(index) {
+                var year = years[index];
+                // Remove all overlays
+                for (var y in overlays) {
+                    map.removeLayer(overlays[y]);
+                }
+                // Add the selected overlay
+                overlays[year].addTo(map);
+                // Update active class on buttons
+                for (var y in buttons) {
+                    buttons[y].classList.remove('active');
+                }
+                buttons[year].classList.add('active');
+                currentIndex = index;
+                // Update year indicator (always visible)
+                var indicator = document.getElementById('year-indicator');
+                indicator.textContent = year;
+                indicator.style.display = 'block';
+            }
+
+            // Toggle fullscreen mode
+            function toggleFullscreen() {
+                var mapElement = document.getElementById('map');
+                
+                if (!isFullscreen) {
+                    // Enter fullscreen
+                    if (document.documentElement.requestFullscreen) {
+                        document.documentElement.requestFullscreen();
+                    } else if (document.documentElement.mozRequestFullScreen) { /* Firefox */
+                        document.documentElement.mozRequestFullScreen();
+                    } else if (document.documentElement.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+                        document.documentElement.webkitRequestFullscreen();
+                    } else if (document.documentElement.msRequestFullscreen) { /* IE/Edge */
+                        document.documentElement.msRequestFullscreen();
+                    }
+                    document.getElementById('fullscreen-button').textContent = 'Exit Fullscreen';
+                } else {
+                    // Exit fullscreen
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.mozCancelFullScreen) { /* Firefox */
+                        document.mozCancelFullScreen();
+                    } else if (document.webkitExitFullscreen) { /* Chrome, Safari & Opera */
+                        document.webkitExitFullscreen();
+                    } else if (document.msExitFullscreen) { /* IE/Edge */
+                        document.msExitFullscreen();
+                    }
+                    document.getElementById('fullscreen-button').textContent = 'Fullscreen';
+                }
+                
+                isFullscreen = !isFullscreen;
+                
+                // Trigger a resize event to ensure the map adjusts properly
+                setTimeout(function() {
+                    window.dispatchEvent(new Event('resize'));
+                }, 200);
+            }
+
+            // Attach legend button event
+            document.getElementById('legend-button').addEventListener('click', toggleLegend);
+
+            // Add event listener to hide legend
+            document.querySelector('.hide-legend').addEventListener('click', toggleLegend);
+
+            // Add event listener to fullscreen button
+            document.getElementById('fullscreen-button').addEventListener('click', toggleFullscreen);
+
+            // Listen for fullscreen change events
+            document.addEventListener('fullscreenchange', function() {
+                isFullscreen = !!document.fullscreenElement;
+                document.getElementById('fullscreen-button').textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+            });
+            document.addEventListener('webkitfullscreenchange', function() {
+                isFullscreen = !!document.webkitFullscreenElement;
+                document.getElementById('fullscreen-button').textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+            });
+            document.addEventListener('mozfullscreenchange', function() {
+                isFullscreen = !!document.mozFullScreenElement;
+                document.getElementById('fullscreen-button').textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+            });
+            document.addEventListener('MSFullscreenChange', function() {
+                isFullscreen = !!document.msFullscreenElement;
+                document.getElementById('fullscreen-button').textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+            });
+
+            // Switch to the next year
+            function nextYear() {
+                if (!isPlaying) return;
+                var nextIndex = (currentIndex + 1) % years.length;
+                switchToYear(nextIndex);
+                var delay = 2000; // Always use 2000ms (2 seconds) delay
+                timeoutId = setTimeout(nextYear, delay);
+            }
+
+            // Start the animation
+            function startAnimation() {
+                if (isPlaying) return;
+                isPlaying = true;
+                document.getElementById('play-pause').textContent = 'Pause';
+                var delay = 2000; // Always use 2000ms (2 seconds) delay
+                timeoutId = setTimeout(nextYear, delay);
+            }
+
+            // Pause the animation
+            function pauseAnimation() {
+                if (!isPlaying) return;
+                isPlaying = false;
+                clearTimeout(timeoutId);
+                document.getElementById('play-pause').textContent = 'Play';
+            }
+
+            // Select a specific year (pauses animation)
+            function selectYear(year) {
+                pauseAnimation();
+                var index = years.indexOf(year);
+                switchToYear(index);
+            }
+
+            // Add event listeners to year buttons
+            years.forEach(function(year) {
+                buttons[year].addEventListener('click', function() {
+                    selectYear(year);
+                });
+            });
+
+            // Add event listener to play/pause button
+            document.getElementById('play-pause').addEventListener('click', function() {
+                if (isPlaying) {
+                    pauseAnimation();
+                } else {
+                    startAnimation();
+                }
+            });
+
+            // Legend toggle function
+            function toggleLegend() {
+                var content = document.getElementById('legend-content');
+                var button = document.getElementById('legend-button');
+                if (content.style.display === 'none' || content.style.display === '') {
+                    content.style.display = 'block';
+                    button.style.display = 'none';
+                } else {
+                    content.style.display = 'none';
+                    button.style.display = 'block';
+                }
+            }
+
+            // Initialize the map with 1910 and start animation directly
+            switchToYear(11); // Start with 1910
+            document.getElementById('play-pause').textContent = 'Pause'; // Reflect playing state
+            nextYear(); // Start the animation immediately
+        });
+    </script>
+</body>
+</html>

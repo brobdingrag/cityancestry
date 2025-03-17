@@ -1,0 +1,16 @@
+data/*
+images/*
+misc
+
+!data/.gitkeep
+!images/.gitkeep
+
+
+*.ipynb
+notes.md
+
+
+archive
+
+inventory.py
+
